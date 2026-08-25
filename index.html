@@ -21,27 +21,45 @@
   .hud{position:absolute;z-index:60}
   /* right column: identity card, then how-to. One flow so the how-to always
      sits under the card whatever the card's height. */
-  #right{top:18px;right:18px;display:flex;flex-direction:column;gap:10px;width:335px}
+  #right{top:18px;right:18px;display:flex;flex-direction:column;gap:10px;width:360px}
   #card,#howto{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
     backdrop-filter:blur(8px)}
   #card{padding:14px 18px 13px}
   #howto{padding:12px 18px 13px}
-  #howto .lbl{font:600 9px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.16em;
-    color:var(--dim);text-transform:uppercase;margin-bottom:9px}
-  #howto dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 11px;align-items:baseline}
-  #howto dt{font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:var(--accent);white-space:nowrap}
-  #howto dd{margin:0;font-size:12px;line-height:1.5;color:var(--dim)}
+  /* the label is the toggle; override the global button reset rather than
+     nesting a second control inside it */
+  #howto .lbl{font:600 10.5px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.16em;
+    color:var(--dim);text-transform:uppercase;margin:0 0 11px;padding:0;border:0;
+    background:none;width:100%;display:flex;align-items:center;justify-content:space-between;
+    cursor:pointer;transition:color .12s,margin .28s ease}
+  #howto .lbl:hover{color:var(--ink)}
+  #howto .chev{font-size:10px;transition:transform .28s ease;color:var(--accent)}
+  /* 1fr -> 0fr collapses without needing to know the content height */
+  #howto .wrap{display:grid;grid-template-rows:1fr;transition:grid-template-rows .28s ease}
+  #howto .wrap > dl{overflow:hidden;min-height:0}
+  #howto.collapsed .wrap{grid-template-rows:0fr}
+  #howto.collapsed .lbl{margin-bottom:0}
+  #howto.collapsed .chev{transform:rotate(-90deg)}
+  #howto dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:8px 13px;align-items:baseline}
+  #howto dt{font:500 12.5px/1.5 'IBM Plex Mono',monospace;color:var(--accent);white-space:nowrap}
+  #howto dd{margin:0;font-size:14px;line-height:1.5;color:#A7B6BD}
   /* badge bar: every logo ships with an opaque background, so they sit together
      on one light chip rather than as three white rectangles on a dark map */
-  #brand{top:18px;left:18px;display:flex;align-items:center;gap:14px;
-    background:#F2F5F6;border:1px solid rgba(0,0,0,.10);border-radius:3px;padding:9px 14px;
+  /* Bottom-right. Potree's sidebar toggle lives at the top-left and the panel
+     opens leftward over the full height, so anything on that side is either
+     covered or covering the burger. The right edge is the only corner the
+     sidebar never reaches. */
+  #footer{bottom:18px;right:18px;display:flex;flex-direction:column;
+    align-items:flex-end;gap:9px}
+  #brand{display:flex;align-items:center;gap:15px;background:#F2F5F6;
+    border:1px solid rgba(0,0,0,.10);border-radius:3px;padding:9px 15px;
     box-shadow:0 2px 14px rgba(0,0,0,.45)}
   #brand img{display:block;height:30px;width:auto}
   #brand .sep{width:1px;height:26px;background:rgba(0,0,0,.14)}
   #card .kicker{font:600 10px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.19em;
     color:var(--accent);text-transform:uppercase}
   #card h1{font:600 20px/1.2 'IBM Plex Sans Condensed',sans-serif;margin:8px 0 5px}
-  #card p{margin:0;font-size:12.5px;line-height:1.5;color:var(--dim)}
+  #card p{margin:0;font-size:13.5px;line-height:1.55;color:#A7B6BD}
   #card .stat{margin-top:9px;padding-top:9px;border-top:1px solid var(--edge);
     font:500 11.5px/1.6 'IBM Plex Mono',monospace;color:var(--dim);font-variant-numeric:tabular-nums}
   #card .stat b{color:var(--ink);font-weight:500}
@@ -58,8 +76,8 @@
   button.on{background:var(--accent);border-color:var(--accent);color:#04191D}
   button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   input[type=range]{accent-color:var(--accent);width:110px}
-  #hint{position:absolute;z-index:60;right:18px;bottom:18px;
-    font:400 11px/1.6 'IBM Plex Mono',monospace;color:#5C6B73;text-align:right}
+  #hint{font:400 11px/1.6 'IBM Plex Mono',monospace;color:#7E8E96;text-align:right;
+    text-shadow:0 1px 3px rgba(0,0,0,.8)}
   #boot{position:fixed;inset:0;z-index:120;display:flex;align-items:center;
     justify-content:center;background:var(--ground);transition:opacity .6s}
   #boot .inner{text-align:center}
@@ -81,7 +99,7 @@
   @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){
     #boot .marks img,#boot .marks .sep{animation:none;opacity:1}}
-  @media (max-width:900px){#right{width:auto;left:18px}#brand{display:none}}
+  @media (max-width:900px){#right{width:auto;left:18px}#footer{display:none}}
   @media (max-width:720px){#hint{display:none}}
 </style>
 </head>
@@ -105,14 +123,6 @@
   <div id="potree_sidebar_container"></div>
 </div>
 
-<div class="hud" id="brand">
-  <img src="logos/asas_t.png" alt="ASAS Labs">
-  <div class="sep"></div>
-  <img src="logos/nyu_t.png" alt="New York University">
-  <div class="sep"></div>
-  <img src="logos/hrpk_t.png" alt="Hudson River Park">
-</div>
-
 <div class="hud" id="right">
   <div id="card">
     <div class="kicker">ASAS Labs &middot; LiDAR survey</div>
@@ -126,8 +136,10 @@
     </div>
   </div>
   <div id="howto">
-    <div class="lbl">How to use</div>
-    <dl>
+    <button class="lbl" id="howtoBtn" aria-expanded="true" aria-controls="howtoBody">
+      How to use <span class="chev" aria-hidden="true">&#9662;</span>
+    </button>
+    <div class="wrap" id="howtoBody"><dl>
       <dt>drag</dt><dd>orbit around the corridor</dd>
       <dt>right-drag</dt><dd>pan sideways</dd>
       <dt>scroll</dt><dd>zoom &mdash; detail sharpens as you close in</dd>
@@ -135,7 +147,7 @@
       <dt>Colour by</dt><dd>height separates canopy and lamp posts from the ground</dd>
       <dt>Detail</dt><dd>raise if your machine can take it; lower if it stutters</dd>
       <dt>Basemap</dt><dd>street map draped under the cloud, to place yourself</dd>
-    </dl>
+    </dl></div>
   </div>
 </div>
 
@@ -180,7 +192,16 @@
   </div>
 </div>
 
-<div id="hint">basemap &copy; OpenStreetMap contributors<br>survey &copy; ASAS Labs</div>
+<div class="hud" id="footer">
+  <div id="hint">basemap &copy; OpenStreetMap contributors &middot; survey &copy; ASAS Labs</div>
+  <div id="brand">
+    <img src="logos/asas_t.png" alt="ASAS Labs">
+    <div class="sep"></div>
+    <img src="logos/nyu_t.png" alt="New York University">
+    <div class="sep"></div>
+    <img src="logos/hrpk_t.png" alt="Hudson River Park">
+  </div>
+</div>
 <div id="boot"><div class="inner">
   <div class="marks">
     <img src="logos/asas_t.png" alt="ASAS Labs">
@@ -205,6 +226,10 @@ const VIEWS = {
 
 // The marks land first, then the loading state fades in under them, so the
 // splash reads as an identity rather than a progress bar with logos attached.
+// A warm cache can have all ten segments in well under a second, which would
+// flash the splash past before anyone reads it, so hold a floor on it.
+const BOOT_T0 = performance.now();
+const BOOT_MIN_MS = 4000;
 setTimeout(() => {
   const s = document.getElementById("bootstage");
   if (s) s.classList.add("on");
@@ -271,15 +296,26 @@ fetch("manifest.json").then(r => r.json()).then(man => {
       if (done === man.segments.length){
         bootmsg.textContent = "Ready";
         const boot = document.getElementById("boot");
-        // hold briefly so the splash does not flash past on a warm cache
+        const held = Math.max(0, BOOT_MIN_MS - (performance.now() - BOOT_T0));
         setTimeout(() => {
           boot.style.opacity = 0;
           setTimeout(() => boot.remove(), 650);
-        }, 420);
+        }, held);
       }
     });
   });
 });
+
+const howto = document.getElementById("howto");
+const howtoBtn = document.getElementById("howtoBtn");
+function setHowto(open){
+  howto.classList.toggle("collapsed", !open);
+  howtoBtn.setAttribute("aria-expanded", String(open));
+  try { localStorage.setItem("hudson.howto", open ? "1" : "0"); } catch (e) {}
+}
+// a private window or blocked site data makes this throw, so default to open
+try { if (localStorage.getItem("hudson.howto") === "0") setHowto(false); } catch (e) {}
+howtoBtn.addEventListener("click", () => setHowto(howto.classList.contains("collapsed")));
 
 function group(sel, fn){
   document.querySelectorAll(sel).forEach(b => b.addEventListener("click", () => {
