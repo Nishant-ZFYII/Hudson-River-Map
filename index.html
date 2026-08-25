@@ -51,11 +51,26 @@
      covered or covering the burger. The right edge is the only corner the
      sidebar never reaches. */
   #footer{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:9px}
-  #brand{display:flex;align-items:center;gap:15px;background:#F2F5F6;
-    border:1px solid rgba(0,0,0,.10);border-radius:3px;padding:9px 15px;
-    box-shadow:0 2px 14px rgba(0,0,0,.45)}
-  #brand img{display:block;height:30px;width:auto}
-  #brand .sep{width:1px;height:26px;background:rgba(0,0,0,.14)}
+  /* Four marks in one static row would be a wide slab over the map, so they
+     scroll through a window the size of the old three-logo bar. The track holds
+     the set twice and translates by exactly -50%, i.e. one whole set including
+     its trailing gap, so the loop has no seam. Duplicating with a plain gap and
+     translating -50% would drift by half a gap each cycle. */
+  #brand{background:#F2F5F6;border:1px solid rgba(0,0,0,.10);border-radius:3px;
+    padding:9px 0;box-shadow:0 2px 14px rgba(0,0,0,.45);overflow:hidden;
+    width:clamp(160px,24vw,252px);
+    -webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,
+      #000 calc(100% - 14px),transparent);
+    mask-image:linear-gradient(90deg,transparent,#000 14px,
+      #000 calc(100% - 14px),transparent)}
+  #track{display:flex;width:max-content;animation:marquee 19s linear infinite}
+  #track .set{display:flex;align-items:center;gap:26px;padding-right:26px}
+  #track img{display:block;height:30px;width:auto;flex:0 0 auto}
+  #brand:hover #track{animation-play-state:paused}
+  @keyframes marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+  @media (prefers-reduced-motion:reduce){
+    #track{animation:none}
+    #brand{width:auto;overflow-x:auto;-webkit-mask-image:none;mask-image:none}}
   #card .kicker{font:600 10px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.19em;
     color:var(--accent);text-transform:uppercase}
   #card h1{font:600 20px/1.2 'IBM Plex Sans Condensed',sans-serif;margin:8px 0 5px}
@@ -87,13 +102,14 @@
   #boot{position:fixed;inset:0;z-index:120;display:flex;align-items:center;
     justify-content:center;background:var(--ground);transition:opacity .6s}
   #boot .inner{text-align:center}
-  #boot .marks{display:flex;align-items:center;justify-content:center;gap:22px;
+  #boot .marks{display:flex;align-items:center;justify-content:center;gap:20px;flex-wrap:wrap;
     background:#F2F5F6;border-radius:4px;padding:16px 24px;box-shadow:0 4px 30px rgba(0,0,0,.5)}
   #boot .marks img{display:block;height:46px;width:auto;opacity:0;
     animation:rise .55s cubic-bezier(.2,.7,.3,1) forwards}
   #boot .marks img:nth-child(1){animation-delay:.10s}
-  #boot .marks img:nth-child(3){animation-delay:.28s}
-  #boot .marks img:nth-child(5){animation-delay:.46s}
+  #boot .marks img:nth-child(3){animation-delay:.24s}
+  #boot .marks img:nth-child(5){animation-delay:.38s}
+  #boot .marks img:nth-child(7){animation-delay:.52s}
   #boot .marks .sep{width:1px;height:38px;background:rgba(0,0,0,.14);opacity:0;
     animation:rise .5s ease forwards .34s}
   #boot .stage{margin-top:26px;opacity:0;transition:opacity .45s}
@@ -105,7 +121,14 @@
   @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){
     #boot .marks img,#boot .marks .sep{animation:none;opacity:1}}
-  @media (max-width:900px){#right{width:auto;left:18px}#footer{display:none}}
+  /* Below 900px the bottom row stacks rather than hiding anything -- last time
+     the two corners were anchored independently and grew into each other. */
+  @media (max-width:900px){
+    #right{width:auto;left:18px;max-height:42vh}
+    #bottom{flex-direction:column;align-items:stretch;gap:11px}
+    #footer{align-items:flex-start}
+    #hint{text-align:left}
+  }
   @media (max-width:720px){#hint{display:none}}
 </style>
 </head>
@@ -200,13 +223,20 @@
 </div>
   <div id="footer">
     <div id="hint">basemap &copy; OpenStreetMap contributors &middot; survey &copy; ASAS Labs</div>
-    <div id="brand">
-      <img src="logos/asas_t.png" alt="ASAS Labs">
-      <div class="sep"></div>
-      <img src="logos/nyu_t.png" alt="New York University">
-      <div class="sep"></div>
-      <img src="logos/hrpk_t.png" alt="Hudson River Park">
-    </div>
+    <div id="brand"><div id="track">
+      <div class="set">
+        <img src="logos/asas_t.png" alt="ASAS Labs">
+        <img src="logos/nyu_t.png" alt="New York University">
+        <img src="logos/cuny_t.png" alt="CUNY">
+        <img src="logos/hrpk_t.png" alt="Hudson River Park">
+      </div>
+      <div class="set" aria-hidden="true">
+        <img src="logos/asas_t.png" alt="">
+        <img src="logos/nyu_t.png" alt="">
+        <img src="logos/cuny_t.png" alt="">
+        <img src="logos/hrpk_t.png" alt="">
+      </div>
+    </div></div>
   </div>
 </div>
 <div id="boot"><div class="inner">
@@ -214,6 +244,8 @@
     <img src="logos/asas_t.png" alt="ASAS Labs">
     <div class="sep"></div>
     <img src="logos/nyu_t.png" alt="New York University">
+    <div class="sep"></div>
+    <img src="logos/cuny_t.png" alt="CUNY">
     <div class="sep"></div>
     <img src="logos/hrpk_t.png" alt="Hudson River Park">
   </div>
