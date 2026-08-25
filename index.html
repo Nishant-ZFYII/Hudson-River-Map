@@ -19,8 +19,25 @@
     font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
   #potree_render_area{background:var(--ground)!important}
   .hud{position:absolute;z-index:60}
-  #card{top:18px;left:18px;background:var(--panel);border:1px solid var(--edge);
-    border-radius:3px;padding:14px 18px 13px;backdrop-filter:blur(8px);max-width:335px}
+  /* right column: identity card, then how-to. One flow so the how-to always
+     sits under the card whatever the card's height. */
+  #right{top:18px;right:18px;display:flex;flex-direction:column;gap:10px;width:335px}
+  #card,#howto{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
+    backdrop-filter:blur(8px)}
+  #card{padding:14px 18px 13px}
+  #howto{padding:12px 18px 13px}
+  #howto .lbl{font:600 9px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.16em;
+    color:var(--dim);text-transform:uppercase;margin-bottom:9px}
+  #howto dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:5px 11px;align-items:baseline}
+  #howto dt{font:500 10.5px/1.5 'IBM Plex Mono',monospace;color:var(--accent);white-space:nowrap}
+  #howto dd{margin:0;font-size:12px;line-height:1.5;color:var(--dim)}
+  /* badge bar: every logo ships with an opaque background, so they sit together
+     on one light chip rather than as three white rectangles on a dark map */
+  #brand{top:18px;left:18px;display:flex;align-items:center;gap:14px;
+    background:#F2F5F6;border:1px solid rgba(0,0,0,.10);border-radius:3px;padding:9px 14px;
+    box-shadow:0 2px 14px rgba(0,0,0,.45)}
+  #brand img{display:block;height:30px;width:auto}
+  #brand .sep{width:1px;height:26px;background:rgba(0,0,0,.14)}
   #card .kicker{font:600 10px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.19em;
     color:var(--accent);text-transform:uppercase}
   #card h1{font:600 20px/1.2 'IBM Plex Sans Condensed',sans-serif;margin:8px 0 5px}
@@ -43,12 +60,29 @@
   input[type=range]{accent-color:var(--accent);width:110px}
   #hint{position:absolute;z-index:60;right:18px;bottom:18px;
     font:400 11px/1.6 'IBM Plex Mono',monospace;color:#5C6B73;text-align:right}
-  #boot{position:absolute;inset:0;z-index:120;display:flex;align-items:center;
-    justify-content:center;background:var(--ground);transition:opacity .5s}
-  #boot span{font:500 12px/1 'IBM Plex Mono',monospace;color:var(--dim)}
-  #boot .bar{margin:14px auto 0;width:210px;height:2px;background:var(--edge);overflow:hidden}
-  #boot .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
-  @media (max-width:720px){#card{max-width:none;right:18px}#hint{display:none}}
+  #boot{position:fixed;inset:0;z-index:120;display:flex;align-items:center;
+    justify-content:center;background:var(--ground);transition:opacity .6s}
+  #boot .inner{text-align:center}
+  #boot .marks{display:flex;align-items:center;justify-content:center;gap:22px;
+    background:#F2F5F6;border-radius:4px;padding:16px 24px;box-shadow:0 4px 30px rgba(0,0,0,.5)}
+  #boot .marks img{display:block;height:46px;width:auto;opacity:0;
+    animation:rise .55s cubic-bezier(.2,.7,.3,1) forwards}
+  #boot .marks img:nth-child(1){animation-delay:.10s}
+  #boot .marks img:nth-child(3){animation-delay:.28s}
+  #boot .marks img:nth-child(5){animation-delay:.46s}
+  #boot .marks .sep{width:1px;height:38px;background:rgba(0,0,0,.14);opacity:0;
+    animation:rise .5s ease forwards .34s}
+  #boot .stage{margin-top:26px;opacity:0;transition:opacity .45s}
+  #boot .stage.on{opacity:1}
+  #boot span{font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--dim);
+    letter-spacing:.04em;font-variant-numeric:tabular-nums}
+  #boot .bar{margin:13px auto 0;width:230px;height:2px;background:var(--edge);overflow:hidden}
+  #boot .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+  @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){
+    #boot .marks img,#boot .marks .sep{animation:none;opacity:1}}
+  @media (max-width:900px){#right{width:auto;left:18px}#brand{display:none}}
+  @media (max-width:720px){#hint{display:none}}
 </style>
 </head>
 <body>
@@ -71,15 +105,37 @@
   <div id="potree_sidebar_container"></div>
 </div>
 
-<div class="hud" id="card">
-  <div class="kicker">ASAS Labs &middot; LiDAR survey</div>
-  <h1>Hudson River Park Esplanade</h1>
-  <p>Pier 40 to Pier 25, Tribeca. Two survey runs, out and back, merged into one
-     georeferenced point cloud.</p>
-  <div class="stat">
-    <b>102,686,809</b> points &mdash; the complete map<br>
-    <b>2,161 m</b> surveyed &middot; <b>1,090 m</b> corridor<br>
-    <b>3.7 cm</b> point spacing near the path
+<div class="hud" id="brand">
+  <img src="logos/asas_t.png" alt="ASAS Labs">
+  <div class="sep"></div>
+  <img src="logos/nyu_t.png" alt="New York University">
+  <div class="sep"></div>
+  <img src="logos/hrpk_t.png" alt="Hudson River Park">
+</div>
+
+<div class="hud" id="right">
+  <div id="card">
+    <div class="kicker">ASAS Labs &middot; LiDAR survey</div>
+    <h1>Hudson River Park Esplanade</h1>
+    <p>Pier 40 to Pier 25, Tribeca. Two survey runs, out and back, merged into one
+       georeferenced point cloud.</p>
+    <div class="stat">
+      <b>102,686,809</b> points &mdash; the complete map<br>
+      <b>2,161 m</b> surveyed &middot; <b>1,090 m</b> corridor<br>
+      <b>3.7 cm</b> point spacing near the path
+    </div>
+  </div>
+  <div id="howto">
+    <div class="lbl">How to use</div>
+    <dl>
+      <dt>drag</dt><dd>orbit around the corridor</dd>
+      <dt>right-drag</dt><dd>pan sideways</dd>
+      <dt>scroll</dt><dd>zoom &mdash; detail sharpens as you close in</dd>
+      <dt>Go to</dt><dd>jump to either pier or the whole run</dd>
+      <dt>Colour by</dt><dd>height separates canopy and lamp posts from the ground</dd>
+      <dt>Detail</dt><dd>raise if your machine can take it; lower if it stutters</dd>
+      <dt>Basemap</dt><dd>street map draped under the cloud, to place yourself</dd>
+    </dl>
   </div>
 </div>
 
@@ -124,10 +180,20 @@
   </div>
 </div>
 
-<div id="hint">left-drag orbit &middot; right-drag pan &middot; scroll zoom<br>basemap &copy; OpenStreetMap contributors &middot; &copy; ASAS Labs</div>
-<div id="boot"><div style="text-align:center">
-  <span id="bootmsg">Loading 102.7 million points</span>
-  <div class="bar"><i id="bootbar"></i></div></div></div>
+<div id="hint">basemap &copy; OpenStreetMap contributors<br>survey &copy; ASAS Labs</div>
+<div id="boot"><div class="inner">
+  <div class="marks">
+    <img src="logos/asas_t.png" alt="ASAS Labs">
+    <div class="sep"></div>
+    <img src="logos/nyu_t.png" alt="New York University">
+    <div class="sep"></div>
+    <img src="logos/hrpk_t.png" alt="Hudson River Park">
+  </div>
+  <div class="stage" id="bootstage">
+    <span id="bootmsg">Preparing 102.7 million points</span>
+    <div class="bar"><i id="bootbar"></i></div>
+  </div>
+</div></div>
 
 <script>
 // Map frame is local ENU metres, so these are the survey's own coordinates.
@@ -136,6 +202,13 @@ const VIEWS = {
   p40: [[95, 85, 105], [-10, -40, 2]],
   p25: [[-40, -880, 105], [-140, -1000, 2]]
 };
+
+// The marks land first, then the loading state fades in under them, so the
+// splash reads as an identity rather than a progress bar with logos attached.
+setTimeout(() => {
+  const s = document.getElementById("bootstage");
+  if (s) s.classList.add("on");
+}, 900);
 
 const viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
 viewer.setEDLEnabled(true);
@@ -196,9 +269,13 @@ fetch("manifest.json").then(r => r.json()).then(man => {
       bootmsg.textContent = `Loading map  ${done} / ${man.segments.length} segments`;
       if (done === 1) flyTo("all", false);
       if (done === man.segments.length){
+        bootmsg.textContent = "Ready";
         const boot = document.getElementById("boot");
-        boot.style.opacity = 0;
-        setTimeout(() => boot.remove(), 550);
+        // hold briefly so the splash does not flash past on a warm cache
+        setTimeout(() => {
+          boot.style.opacity = 0;
+          setTimeout(() => boot.remove(), 650);
+        }, 420);
       }
     });
   });
