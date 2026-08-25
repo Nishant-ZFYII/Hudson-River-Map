@@ -21,7 +21,8 @@
   .hud{position:absolute;z-index:60}
   /* right column: identity card, then how-to. One flow so the how-to always
      sits under the card whatever the card's height. */
-  #right{top:18px;right:18px;display:flex;flex-direction:column;gap:10px;width:360px}
+  #right{top:18px;right:18px;display:flex;flex-direction:column;gap:10px;width:360px;
+    max-height:calc(100vh - 180px);overflow-y:auto;scrollbar-width:thin}
   #card,#howto{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
     backdrop-filter:blur(8px)}
   #card{padding:14px 18px 13px}
@@ -49,8 +50,7 @@
      opens leftward over the full height, so anything on that side is either
      covered or covering the burger. The right edge is the only corner the
      sidebar never reaches. */
-  #footer{bottom:18px;right:18px;display:flex;flex-direction:column;
-    align-items:flex-end;gap:9px}
+  #footer{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-end;gap:9px}
   #brand{display:flex;align-items:center;gap:15px;background:#F2F5F6;
     border:1px solid rgba(0,0,0,.10);border-radius:3px;padding:9px 15px;
     box-shadow:0 2px 14px rgba(0,0,0,.45)}
@@ -63,7 +63,13 @@
   #card .stat{margin-top:9px;padding-top:9px;border-top:1px solid var(--edge);
     font:500 11.5px/1.6 'IBM Plex Mono',monospace;color:var(--dim);font-variant-numeric:tabular-nums}
   #card .stat b{color:var(--ink);font-weight:500}
-  #bar{bottom:18px;left:18px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap}
+  /* One row spanning the full width instead of two independently anchored
+     corners -- anchored separately, the control groups grow rightward until
+     they run under the badge bar on a wide screen. */
+  #bottom{left:18px;right:18px;bottom:18px;display:flex;align-items:flex-end;
+    justify-content:space-between;gap:18px;pointer-events:none}
+  #bottom > *{pointer-events:auto}
+  #bar{display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;flex:1 1 auto;min-width:0}
   .grp{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
     padding:9px 11px;backdrop-filter:blur(8px)}
   .grp .lbl{font:600 9px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.16em;
@@ -151,7 +157,8 @@
   </div>
 </div>
 
-<div class="hud" id="bar">
+<div class="hud" id="bottom">
+<div id="bar">
   <div class="grp">
     <div class="lbl">Go to</div>
     <div class="row">
@@ -191,15 +198,15 @@
     </div>
   </div>
 </div>
-
-<div class="hud" id="footer">
-  <div id="hint">basemap &copy; OpenStreetMap contributors &middot; survey &copy; ASAS Labs</div>
-  <div id="brand">
-    <img src="logos/asas_t.png" alt="ASAS Labs">
-    <div class="sep"></div>
-    <img src="logos/nyu_t.png" alt="New York University">
-    <div class="sep"></div>
-    <img src="logos/hrpk_t.png" alt="Hudson River Park">
+  <div id="footer">
+    <div id="hint">basemap &copy; OpenStreetMap contributors &middot; survey &copy; ASAS Labs</div>
+    <div id="brand">
+      <img src="logos/asas_t.png" alt="ASAS Labs">
+      <div class="sep"></div>
+      <img src="logos/nyu_t.png" alt="New York University">
+      <div class="sep"></div>
+      <img src="logos/hrpk_t.png" alt="Hudson River Park">
+    </div>
   </div>
 </div>
 <div id="boot"><div class="inner">
