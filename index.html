@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no">
+<title>Hudson River Park Esplanade</title>
+<link rel="stylesheet" type="text/css" href="build/potree/potree.css">
+<link rel="stylesheet" type="text/css" href="libs/jquery-ui/jquery-ui.min.css">
+<link rel="stylesheet" type="text/css" href="libs/openlayers3/ol.css">
+<link rel="stylesheet" type="text/css" href="libs/spectrum/spectrum.css">
+<link rel="stylesheet" type="text/css" href="libs/jstree/themes/mixed/style.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+  :root{--ink:#E6ECEE;--dim:#8B9CA4;--edge:#1E2A31;--ground:#07090B;
+        --panel:rgba(9,13,16,.86);--accent:#2AA5B8}
+  html,body{margin:0;height:100%;background:var(--ground);color:var(--ink);
+    font-family:'IBM Plex Sans',system-ui,sans-serif;overflow:hidden}
+  #potree_render_area{background:var(--ground)!important}
+  .hud{position:absolute;z-index:60}
+  #card{top:18px;left:18px;background:var(--panel);border:1px solid var(--edge);
+    border-radius:3px;padding:14px 18px 13px;backdrop-filter:blur(8px);max-width:335px}
+  #card .kicker{font:600 10px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.19em;
+    color:var(--accent);text-transform:uppercase}
+  #card h1{font:600 20px/1.2 'IBM Plex Sans Condensed',sans-serif;margin:8px 0 5px}
+  #card p{margin:0;font-size:12.5px;line-height:1.5;color:var(--dim)}
+  #card .stat{margin-top:9px;padding-top:9px;border-top:1px solid var(--edge);
+    font:500 11.5px/1.6 'IBM Plex Mono',monospace;color:var(--dim);font-variant-numeric:tabular-nums}
+  #card .stat b{color:var(--ink);font-weight:500}
+  #bar{bottom:18px;left:18px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap}
+  .grp{background:var(--panel);border:1px solid var(--edge);border-radius:3px;
+    padding:9px 11px;backdrop-filter:blur(8px)}
+  .grp .lbl{font:600 9px/1 'IBM Plex Sans Condensed',sans-serif;letter-spacing:.16em;
+    color:var(--dim);text-transform:uppercase;margin-bottom:7px}
+  .row{display:flex;gap:5px;align-items:center}
+  button{font:500 12px/1 'IBM Plex Sans',sans-serif;color:var(--ink);background:transparent;
+    border:1px solid var(--edge);border-radius:2px;padding:7px 11px;cursor:pointer;
+    transition:background .12s,border-color .12s,color .12s}
+  button:hover{border-color:var(--accent);color:#fff}
+  button.on{background:var(--accent);border-color:var(--accent);color:#04191D}
+  button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  input[type=range]{accent-color:var(--accent);width:110px}
+  #hint{position:absolute;z-index:60;right:18px;bottom:18px;
+    font:400 11px/1.6 'IBM Plex Mono',monospace;color:#5C6B73;text-align:right}
+  #boot{position:absolute;inset:0;z-index:120;display:flex;align-items:center;
+    justify-content:center;background:var(--ground);transition:opacity .5s}
+  #boot span{font:500 12px/1 'IBM Plex Mono',monospace;color:var(--dim)}
+  #boot .bar{margin:14px auto 0;width:210px;height:2px;background:var(--edge);overflow:hidden}
+  #boot .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .25s}
+  @media (max-width:720px){#card{max-width:none;right:18px}#hint{display:none}}
+</style>
+</head>
+<body>
+<script src="libs/jquery/jquery-3.1.1.min.js"></script>
+<script src="libs/spectrum/spectrum.js"></script>
+<script src="libs/jquery-ui/jquery-ui.min.js"></script>
+<script src="libs/other/BinaryHeap.js"></script>
+<script src="libs/tween/tween.min.js"></script>
+<script src="libs/d3/d3.js"></script>
+<script src="libs/proj4/proj4.js"></script>
+<script src="libs/openlayers3/ol.js"></script>
+<script src="libs/i18next/i18next.js"></script>
+<script src="libs/jstree/jstree.js"></script>
+<script src="libs/three.js/build/three.js"></script>
+<script src="build/potree/potree.js"></script>
+<script src="libs/plasio/js/laslaz.js"></script>
+
+<div class="potree_container" style="position:absolute;width:100%;height:100%;left:0;top:0">
+  <div id="potree_render_area"></div>
+  <div id="potree_sidebar_container"></div>
+</div>
+
+<div class="hud" id="card">
+  <div class="kicker">ASAS Labs &middot; LiDAR survey</div>
+  <h1>Hudson River Park Esplanade</h1>
+  <p>Pier 40 to Pier 25, Tribeca. Two survey runs, out and back, merged into one
+     georeferenced point cloud.</p>
+  <div class="stat">
+    <b>102,686,809</b> points &mdash; the complete map<br>
+    <b>2,161 m</b> surveyed &middot; <b>1,090 m</b> corridor<br>
+    <b>3.7 cm</b> point spacing near the path
+  </div>
+</div>
+
+<div class="hud" id="bar">
+  <div class="grp">
+    <div class="lbl">Go to</div>
+    <div class="row">
+      <button data-view="all" class="on">Whole corridor</button>
+      <button data-view="p40">Pier 40</button>
+      <button data-view="p25">Pier 25</button>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Colour by</div>
+    <div class="row">
+      <button data-attr="elevation" class="on">Height</button>
+      <button data-attr="intensity">Reflectivity</button>
+      <button data-attr="rgba">Surface</button>
+    </div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Detail &mdash; <span id="budgetv">8</span> M</div>
+    <div class="row"><input id="budget" type="range" min="1" max="24" step="1" value="8"></div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Point size</div>
+    <div class="row"><input id="ptsize" type="range" min="1" max="5" step="1" value="1"></div>
+  </div>
+  <div class="grp">
+    <div class="lbl">Height band &mdash; 0&ndash;<span id="ehv">12</span> m</div>
+    <div class="row"><input id="ehi" type="range" min="4" max="20" step="1" value="12"></div>
+  </div>
+  <div class="grp">
+    <div class="lbl">View</div>
+    <div class="row">
+      <button id="btnEdl" class="on">Shading</button>
+      <button id="btnMap" class="on">Basemap</button>
+      <button id="btnInv">Invert</button>
+      <button id="btnBg">Light</button>
+      <button id="btnTools">Tools</button>
+    </div>
+  </div>
+</div>
+
+<div id="hint">left-drag orbit &middot; right-drag pan &middot; scroll zoom<br>basemap &copy; OpenStreetMap contributors &middot; &copy; ASAS Labs</div>
+<div id="boot"><div style="text-align:center">
+  <span id="bootmsg">Loading 102.7 million points</span>
+  <div class="bar"><i id="bootbar"></i></div></div></div>
+
+<script>
+// Map frame is local ENU metres, so these are the survey's own coordinates.
+const VIEWS = {
+  all: [[560, -520, 760], [-70, -510, 0]],
+  p40: [[95, 85, 105], [-10, -40, 2]],
+  p25: [[-40, -880, 105], [-140, -1000, 2]]
+};
+
+const viewer = new Potree.Viewer(document.getElementById("potree_render_area"));
+viewer.setEDLEnabled(true);
+viewer.setEDLRadius(1.4);
+viewer.setEDLStrength(0.45);
+viewer.setFOV(60);
+viewer.setPointBudget(8_000_000);
+viewer.setBackground("black");
+viewer.setDescription("");
+viewer.loadGUI(() => { viewer.setLanguage('en'); });
+
+const clouds = [];
+let PT_SIZE = 1;
+function flyTo(key, animate){
+  const [eye, tgt] = VIEWS[key];
+  const v = viewer.scene.view;
+  // Potree 1.8 bundles three.js rather than exposing it globally, so use
+  // Potree's own view API instead of constructing THREE objects here.
+  if (animate === false){ v.position.set(eye[0], eye[1], eye[2]); v.lookAt(tgt[0], tgt[1], tgt[2]); }
+  else { v.setView(eye, tgt, 900); }
+}
+
+// The map is served as ten corridor segments, each its own octree, because a
+// single 645 MB octree.bin cannot be pushed to GitHub. Potree renders any number
+// of point clouds in one scene, so the split is invisible once loaded -- and each
+// segment streams independently, so the corridor fills in rather than blocking.
+fetch("manifest.json").then(r => r.json()).then(man => {
+  const bootbar = document.getElementById("bootbar");
+  const bootmsg = document.getElementById("bootmsg");
+  let done = 0;
+  man.segments.forEach(seg => {
+    Potree.loadPointCloud(`pointclouds/${seg}/metadata.json`, seg, e => {
+      const pc = e.pointcloud, m = pc.material;
+      // Height on a rainbow ramp by default. The merged map is 77% ground within
+      // 4 m of the path, so a reflectivity-driven colouring lets that dense floor
+      // dominate while tree canopy -- which returns weakly -- goes dark and
+      // disappears. Ground here sits at 1-3 m and canopy and lamp posts run to
+      // 11-17 m, so banding elevation over -1..12 m separates exactly the things
+      // you are trying to see.
+      m.activeAttributeName = "elevation";
+      m.gradient = Potree.Gradients.RAINBOW;
+      m.elevationRange = [-1, 12];
+      // Intensity was stretched to 0..65535 on the 4-96 percentile band at LAS
+      // export, but the median still lands near 9k, so mapping the full range
+      // crushes almost everything into the bottom of the ramp.
+      m.intensityRange = [0, 20000];
+      // FIXED, not ADAPTIVE. Adaptive sizing inflates points to cover the gaps
+      // between octree samples, which reads as blobs; fixed screen-space dots
+      // keep every sample the size of a pixel and let real density carry the
+      // detail. The point budget is what fills the gaps instead.
+      m.pointSizeType = Potree.PointSizeType.FIXED;
+      m.size = PT_SIZE;
+      m.shape = Potree.PointShape.SQUARE;
+      viewer.scene.addPointCloud(pc);
+      clouds.push(pc);
+      done++;
+      bootbar.style.width = (done / man.segments.length * 100).toFixed(0) + "%";
+      bootmsg.textContent = `Loading map  ${done} / ${man.segments.length} segments`;
+      if (done === 1) flyTo("all", false);
+      if (done === man.segments.length){
+        const boot = document.getElementById("boot");
+        boot.style.opacity = 0;
+        setTimeout(() => boot.remove(), 550);
+      }
+    });
+  });
+});
+
+function group(sel, fn){
+  document.querySelectorAll(sel).forEach(b => b.addEventListener("click", () => {
+    document.querySelectorAll(sel).forEach(o => o.classList.remove("on"));
+    b.classList.add("on"); fn(b);
+  }));
+}
+group("[data-view]", b => flyTo(b.dataset.view));
+group("[data-attr]", b => clouds.forEach(c => c.material.activeAttributeName = b.dataset.attr));
+
+document.getElementById("budget").addEventListener("input", e => {
+  const m = parseInt(e.target.value, 10);
+  viewer.setPointBudget(m * 1_000_000);
+  document.getElementById("budgetv").textContent = m;
+});
+// OpenStreetMap laid flat under the cloud, so you can tell which stretch of the
+// esplanade you are looking at without recognising it by shape. The map is
+// georeferenced, so this is a true overlay -- the tiles were resampled onto the
+// survey's own ENU grid rather than stretched to the bounding box.
+let basemap = null;
+fetch("basemap.json").then(r => r.json()).then(b => {
+  const w = b.x1 - b.x0, h = b.y1 - b.y0;
+  const tex = new THREE.TextureLoader().load("basemap.jpg");
+  tex.anisotropy = 8;
+  tex.minFilter = THREE.LinearMipmapLinearFilter;
+  // Draped, not flat. The esplanade climbs 5.6 m end to end and dips under the
+  // piers, so a flat plane is buried at one end and floating at the other. The
+  // heightfield comes from the cloud's own ground returns and sits 0.35 m below
+  // them. PlaneGeometry lays out vertices row-major from +Y, which matches the
+  // heightfield's north-first row order and the texture's orientation.
+  const Plane = THREE.PlaneBufferGeometry || THREE.PlaneGeometry;
+  const geo = new Plane(w, h, b.nx - 1, b.ny - 1);
+  const pos = geo.attributes.position;
+  for (let i = 0; i < pos.count; i++) pos.setZ(i, b.heights[i]);
+  pos.needsUpdate = true;
+  geo.computeBoundingSphere();
+  const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+    map: tex, side: THREE.DoubleSide, depthWrite: true}));
+  mesh.position.set((b.x0 + b.x1) / 2, (b.y0 + b.y1) / 2, 0);
+  basemap = mesh;
+  viewer.scene.scene.add(mesh);
+  console.log(`basemap draped: ${b.nx}x${b.ny} cells`);
+}).catch(e => {
+  // a silent catch here hid a real TypeError for a whole iteration
+  console.error("BASEMAP FAILED:", e);
+  const b = document.getElementById("btnMap");
+  if (b) { b.classList.remove("on"); b.textContent = "Basemap ✗"; b.title = String(e); }
+});
+
+// Inverting is just remapping the stop positions and reversing; the colour
+// objects are reused, so this needs no THREE constructors.
+const G_NORMAL = Potree.Gradients.RAINBOW;
+const G_INVERT = G_NORMAL.map(s => [1 - s[0], s[1]]).reverse();
+
+document.getElementById("btnMap").addEventListener("click", function(){
+  this.classList.toggle("on");
+  if (basemap) basemap.visible = this.classList.contains("on");
+});
+document.getElementById("btnInv").addEventListener("click", function(){
+  this.classList.toggle("on");
+  const g = this.classList.contains("on") ? G_INVERT : G_NORMAL;
+  clouds.forEach(c => c.material.gradient = g);
+});
+document.getElementById("ehi").addEventListener("input", e => {
+  const hi = parseInt(e.target.value, 10);
+  clouds.forEach(c => c.material.elevationRange = [-1, hi]);
+  document.getElementById("ehv").textContent = hi;
+});
+document.getElementById("ptsize").addEventListener("input", e => {
+  PT_SIZE = parseInt(e.target.value, 10);
+  clouds.forEach(c => c.material.size = PT_SIZE);
+});
+document.getElementById("btnBg").addEventListener("click", function(){
+  const light = !this.classList.contains("on");
+  this.classList.toggle("on", light);
+  viewer.setBackground(light ? "white" : "black");
+  document.getElementById("potree_render_area").style.background = light ? "#F4F6F7" : "";
+});
+document.getElementById("btnEdl").addEventListener("click", function(){
+  this.classList.toggle("on");
+  viewer.setEDLEnabled(this.classList.contains("on"));
+});
+document.getElementById("btnTools").addEventListener("click", function(){
+  this.classList.toggle("on");
+  viewer.toggleSidebar();
+});
+</script>
+</body>
+</html>
