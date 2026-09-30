@@ -42,3 +42,35 @@ stock `http.server` does not — use `python -m RangeHTTPServer` locally.
 
 4. **`basemap.jpg` must be ≤ 4096 px** on its long edge or the GPU silently
    downsamples it (`THREE.WebGLRenderer: Texture has been resized`).
+
+## Update — why the viewer broke after publishing (Sept 2026)
+
+The map rendered locally but showed nothing on GitHub Pages, with
+`RangeError: Invalid array length` in `OctreeLoader.parseHierarchy`.
+
+**This was not caused by a vendor patch.** Both causes are long-standing
+behaviours that only collide when Potree 2.0 octrees are hosted on GitHub
+Pages. The Potree checkout is 1.8.0 (HEAD 5636cd4, 2026-01-08) and the
+offending line is original upstream source, not a recent change. Nothing in
+the Autoware/mapping pipeline was involved — the point cloud was always
+correct; only its delivery over HTTP was broken.
+
+**Cause 1 — a bad request header.** `OctreeLoader` sends
+`content-type: multipart/byteranges` on its range requests. The header is
+meaningless on a GET (content-type describes a request body; a GET has none)
+and GitHub Pages returns **400** to any request carrying it. Fixed by removing
+it from both `fetch()` calls.
+
+**Cause 2 — GitHub Pages gzips the octree and breaks byte ranges.** Pages
+compresses `application/octet-stream` and applies `Range` to the *compressed*
+entity, so Potree's byte offsets index into a gzip stream. Measured on this
+repo: a request for bytes 0–3321 of `hierarchy.bin` returned **7,372 bytes**
+instead of 3,322, and since `parseHierarchy` computes `new Array(len / 22)`,
+`7372 % 22 = 2` produced a fractional length and threw. Pages does **not**
+compress `image/*`, so the payloads are now served as `hierarchy.bin.png` and
+`octree.bin.png` — contents byte-for-byte unchanged, the extension exists only
+to opt out of compression — with the two URLs in `potree.js` updated to match.
+
+This is invisible to `curl` unless you pass `--compressed`; a plain `curl -r`
+returns a correct `206`, which is why a preflight check looks clean and only a
+real browser fails.
