@@ -116,8 +116,10 @@
   #boot .stage.on{opacity:1}
   #boot span{font:500 11.5px/1 'IBM Plex Mono',monospace;color:var(--dim);
     letter-spacing:.04em;font-variant-numeric:tabular-nums}
-  #boot .bar{margin:13px auto 0;width:230px;height:2px;background:var(--edge);overflow:hidden}
-  #boot .bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .3s}
+  #boot .bar{margin:14px auto 0;width:260px;height:5px;background:var(--edge);
+    border-radius:3px;overflow:hidden}
+  #boot .bar i{display:block;height:100%;width:0;border-radius:3px;background:var(--accent);
+    transition:width .45s cubic-bezier(.3,.8,.4,1)}
   @keyframes rise{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
   @media (prefers-reduced-motion:reduce){
     #boot .marks img,#boot .marks .sep{animation:none;opacity:1}}
@@ -321,9 +323,27 @@ fetch("manifest.json").then(r => r.json()).then(man => {
   const boot = document.getElementById("boot");
   let done = 0, failed = 0, lifted = false;
 
-  // Lift the splash as soon as the FIRST segment is on screen. Waiting for all
-  // ten meant a single failed segment left the overlay covering the canvas with
-  // no way to tell what went wrong -- the page looked simply dead.
+  const total = man.segments.length;
+  // Lift once every segment has SETTLED -- loaded or failed -- so the count runs
+  // all the way to 10 and is actually worth watching. Keying on success alone
+  // would hang forever on one bad segment (that bug left the overlay covering a
+  // perfectly good map); keying on the first success hid segments 2..10.
+  const settled = () => done + failed;
+  const update = () => {
+    if (bootbar) bootbar.style.width = (settled() / total * 100).toFixed(1) + "%";
+    if (bootmsg && !lifted) {
+      bootmsg.textContent = failed
+        ? `Loading map  ${done} / ${total} segments  (${failed} failed)`
+        : `Loading map  ${done} / ${total} segments`;
+    }
+    if (settled() === total) {
+      if (bootmsg) bootmsg.textContent = failed
+        ? `Loaded ${done} of ${total} segments`
+        : `Ready \u2014 ${total} segments`;
+      setTimeout(lift, 450);        // let the finished bar be seen
+    }
+  };
+
   const lift = () => {
     if (lifted || !boot) return;
     lifted = true;
@@ -351,12 +371,11 @@ fetch("manifest.json").then(r => r.json()).then(man => {
           viewer.scene.addPointCloud(pc);
           clouds.push(pc);
           done++;
-          if (bootbar) bootbar.style.width = (done / man.segments.length * 100).toFixed(0) + "%";
-          if (bootmsg && !lifted) bootmsg.textContent = `Loading map  ${done} / ${man.segments.length} segments`;
-          if (done === 1) { flyTo("all", false); lift(); }
-        } catch (err) { failed++; showError("Segment " + seg + " failed: " + err.message); lift(); }
+          if (done === 1) flyTo("all", false);
+          update();
+        } catch (err) { failed++; showError("Segment " + seg + " failed: " + err.message); update(); }
       });
-    } catch (err) { failed++; showError("Could not start " + seg + ": " + err.message); lift(); }
+    } catch (err) { failed++; showError("Could not start " + seg + ": " + err.message); update(); }
   });
 }).catch(e => showError("Could not read manifest.json: " + e.message));
 
