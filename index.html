@@ -199,8 +199,8 @@
     </div>
   </div>
   <div class="grp">
-    <div class="lbl">Detail &mdash; <span id="budgetv">8</span> M</div>
-    <div class="row"><input id="budget" type="range" min="1" max="24" step="1" value="8"></div>
+    <div class="lbl">Detail &mdash; <span id="budgetv">2</span> M</div>
+    <div class="row"><input id="budget" type="range" min="1" max="24" step="1" value="2"></div>
   </div>
   <div class="grp">
     <div class="lbl">Point size</div>
@@ -279,7 +279,7 @@ viewer.setEDLEnabled(true);
 viewer.setEDLRadius(1.4);
 viewer.setEDLStrength(0.45);
 viewer.setFOV(60);
-viewer.setPointBudget(8_000_000);
+viewer.setPointBudget(2_000_000);
 viewer.setBackground("black");
 viewer.setDescription("");
 viewer.loadGUI(() => { viewer.setLanguage('en'); });
@@ -299,62 +299,62 @@ function flyTo(key, animate){
 // single 645 MB octree.bin cannot be pushed to GitHub. Potree renders any number
 // of point clouds in one scene, so the split is invisible once loaded -- and each
 // segment streams independently, so the corridor fills in rather than blocking.
+// A visible failure beats a black screen. Anything thrown during load or
+// render lands here instead of leaving the splash up forever.
+function showError(msg){
+  const b = document.getElementById("boot");
+  if (b) {
+    const m = document.getElementById("bootmsg");
+    if (m) { m.textContent = msg; m.style.color = "#C6522E"; }
+  }
+  console.error(msg);
+}
+window.addEventListener("error", e => showError("Error: " + (e.message || e.type)));
+
 fetch("manifest.json").then(r => r.json()).then(man => {
   const bootbar = document.getElementById("bootbar");
   const bootmsg = document.getElementById("bootmsg");
-  let done = 0;
-  man.segments.forEach(seg => {
-    Potree.loadPointCloud(`pointclouds/${seg}/metadata.json`, seg, e => {
-      const pc = e.pointcloud, m = pc.material;
-      // Height on a rainbow ramp by default. The merged map is 77% ground within
-      // 4 m of the path, so a reflectivity-driven colouring lets that dense floor
-      // dominate while tree canopy -- which returns weakly -- goes dark and
-      // disappears. Ground here sits at 1-3 m and canopy and lamp posts run to
-      // 11-17 m, so banding elevation over -1..12 m separates exactly the things
-      // you are trying to see.
-      m.activeAttributeName = "elevation";
-      m.gradient = Potree.Gradients.RAINBOW;
-      m.elevationRange = [-1, 12];
-      // Intensity was stretched to 0..65535 on the 4-96 percentile band at LAS
-      // export, but the median still lands near 9k, so mapping the full range
-      // crushes almost everything into the bottom of the ramp.
-      m.intensityRange = [0, 20000];
-      // FIXED, not ADAPTIVE. Adaptive sizing inflates points to cover the gaps
-      // between octree samples, which reads as blobs; fixed screen-space dots
-      // keep every sample the size of a pixel and let real density carry the
-      // detail. The point budget is what fills the gaps instead.
-      m.pointSizeType = Potree.PointSizeType.FIXED;
-      m.size = PT_SIZE;
-      m.shape = Potree.PointShape.SQUARE;
-      viewer.scene.addPointCloud(pc);
-      clouds.push(pc);
-      done++;
-      bootbar.style.width = (done / man.segments.length * 100).toFixed(0) + "%";
-      bootmsg.textContent = `Loading map  ${done} / ${man.segments.length} segments`;
-      if (done === 1) flyTo("all", false);
-      if (done === man.segments.length){
-        bootmsg.textContent = "Ready";
-        const boot = document.getElementById("boot");
-        const held = Math.max(0, BOOT_MIN_MS - (performance.now() - BOOT_T0));
-        setTimeout(() => {
-          boot.style.opacity = 0;
-          setTimeout(() => boot.remove(), 650);
-        }, held);
-      }
-    });
-  });
-});
+  const boot = document.getElementById("boot");
+  let done = 0, failed = 0, lifted = false;
 
-const howto = document.getElementById("howto");
-const howtoBtn = document.getElementById("howtoBtn");
-function setHowto(open){
-  howto.classList.toggle("collapsed", !open);
-  howtoBtn.setAttribute("aria-expanded", String(open));
-  try { localStorage.setItem("hudson.howto", open ? "1" : "0"); } catch (e) {}
-}
-// a private window or blocked site data makes this throw, so default to open
-try { if (localStorage.getItem("hudson.howto") === "0") setHowto(false); } catch (e) {}
-howtoBtn.addEventListener("click", () => setHowto(howto.classList.contains("collapsed")));
+  // Lift the splash as soon as the FIRST segment is on screen. Waiting for all
+  // ten meant a single failed segment left the overlay covering the canvas with
+  // no way to tell what went wrong -- the page looked simply dead.
+  const lift = () => {
+    if (lifted || !boot) return;
+    lifted = true;
+    const held = Math.max(0, BOOT_MIN_MS - (performance.now() - BOOT_T0));
+    setTimeout(() => {
+      boot.style.opacity = 0;
+      setTimeout(() => boot.parentNode && boot.remove(), 650);
+    }, held);
+  };
+  // hard backstop: never hold the splash longer than this, whatever happens
+  setTimeout(() => { if (!lifted) { showError("Load timed out — showing what loaded"); lift(); } }, 25000);
+
+  man.segments.forEach(seg => {
+    try {
+      Potree.loadPointCloud(`pointclouds/${seg}/metadata.json`, seg, e => {
+        try {
+          const pc = e.pointcloud, m = pc.material;
+          m.activeAttributeName = "elevation";
+          m.gradient = Potree.Gradients.RAINBOW;
+          m.elevationRange = [-1, 12];
+          m.intensityRange = [0, 20000];
+          m.pointSizeType = Potree.PointSizeType.FIXED;
+          m.size = PT_SIZE;
+          m.shape = Potree.PointShape.SQUARE;
+          viewer.scene.addPointCloud(pc);
+          clouds.push(pc);
+          done++;
+          if (bootbar) bootbar.style.width = (done / man.segments.length * 100).toFixed(0) + "%";
+          if (bootmsg && !lifted) bootmsg.textContent = `Loading map  ${done} / ${man.segments.length} segments`;
+          if (done === 1) { flyTo("all", false); lift(); }
+        } catch (err) { failed++; showError("Segment " + seg + " failed: " + err.message); lift(); }
+      });
+    } catch (err) { failed++; showError("Could not start " + seg + ": " + err.message); lift(); }
+  });
+}).catch(e => showError("Could not read manifest.json: " + e.message));
 
 function group(sel, fn){
   document.querySelectorAll(sel).forEach(b => b.addEventListener("click", () => {
