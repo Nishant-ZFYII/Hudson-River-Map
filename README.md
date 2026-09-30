@@ -20,3 +20,25 @@ budget; eye-dome shading; and Potree's own measurement tools.
 
 Requires a host that serves HTTP range requests. GitHub Pages does. Python's
 stock `http.server` does not — use `python -m RangeHTTPServer` locally.
+
+## Vendored Potree patches (reapply if Potree is re-vendored)
+
+1. **`build/potree/potree.js` — removed `'content-type': 'multipart/byteranges'`**
+   from both `fetch()` calls in `OctreeLoader` (hierarchy and octree range
+   requests). GitHub Pages returns **400** to any request carrying that header,
+   which made every `hierarchy.bin` load fail with
+   `RangeError: Invalid array length`. The header is meaningless on a GET.
+
+2. **`libs/Cesium/` deleted.** It contains a Mapbox secret token that GitHub
+   push protection (GH013) rejects. Potree does not use it.
+
+3. **Cache-bust by FILENAME, never by `?query=`.** Potree derives
+   `scriptPath = new URL(document.currentScript.src + '/..')`. A query string
+   makes everything after `?` part of the query, so worker and resource URLs
+   become `potree.js?v=.../../workers/...` — the browser then loads `potree.js`
+   itself as the web worker and it dies on `ReferenceError: document is not
+   defined`. Renaming to `potree.<hash>.js` keeps the directory, and so
+   `scriptPath`, intact.
+
+4. **`basemap.jpg` must be ≤ 4096 px** on its long edge or the GPU silently
+   downsamples it (`THREE.WebGLRenderer: Texture has been resized`).

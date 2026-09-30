@@ -144,7 +144,7 @@
 <script src="libs/i18next/i18next.js"></script>
 <script src="libs/jstree/jstree.js"></script>
 <script src="libs/three.js/build/three.js"></script>
-<script src="build/potree/potree.js?v=db753418"></script>
+<script src="build/potree/potree.db753418.js"></script>
 <script src="libs/plasio/js/laslaz.js"></script>
 
 <div class="potree_container" style="position:absolute;width:100%;height:100%;left:0;top:0">
@@ -282,7 +282,11 @@ viewer.setFOV(60);
 viewer.setPointBudget(2_000_000);
 viewer.setBackground("black");
 viewer.setDescription("");
-viewer.loadGUI(() => { viewer.setLanguage('en'); });
+// Potree's own sidebar is optional here -- this page has its own controls and
+// only the "Tools" button exposes it. Its init has thrown before, so never let
+// it take the page down with it.
+try { viewer.loadGUI(() => { try { viewer.setLanguage('en'); } catch (e) {} }); }
+catch (e) { console.warn('Potree sidebar unavailable:', e.message); }
 
 const clouds = [];
 let PT_SIZE = 1;
